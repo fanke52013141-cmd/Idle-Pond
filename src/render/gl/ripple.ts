@@ -119,7 +119,7 @@ export class RippleSim {
   }
 
   /** 斜率增益：控制涟漪法线 → 折射位移的可见强度 */
-  slope = 5;
+  slope = 3;
 
   step(n = 2): void {    const gl = this.g.gl;
     for (let i = 0; i < n; i++) {

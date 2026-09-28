@@ -139,6 +139,15 @@ export class PondRenderer {
     if (this.rings.length < 60) this.rings.push({ x, y, age: 0, max: 1 + Math.min(2, strength * 3) });
   }
 
+  /** 光标滑动的尾迹：单滴微幅（壁纸场景，不能干扰桌面注意力） */
+  trail(x: number, y: number): void {
+    if (this.mode === 'gl' && this.glPack) {
+      this.glPack.ripple.drop(x / this.w, 1 - y / this.h, 0.014, 0.0007);
+      return;
+    }
+    if (this.rings.length < 60) this.rings.push({ x, y, age: 0, max: 0.7 });
+  }
+
   splash(x: number, y: number, power: number): void {
     this.particles.splash(x, y, power);
     if (this.mode === 'gl') {
@@ -153,17 +162,25 @@ export class PondRenderer {
     const { pond, look, dt } = a;
     this.time += dt;
 
-    // 风的痕迹：沿风向排布的小涟漪串，频率与强度随风增大
+    // 风的痕迹：沿风向排布的小涟漪串，频率与强度随风增大。
+    // 直接微幅注入（幅度标定在法线正比区，normal≈0.3），绝不复用点击级的 ripple()
     const wk = a.wind ? a.wind.k : 0.32;
     const wax = Math.cos(a.wind.angle), way = Math.sin(a.wind.angle);
     this.windTimer -= dt * (0.5 + wk * 2.4);
     if (this.windTimer <= 0) {
       this.windTimer = 0.85 + Math.random() * 1.2;
       const cx = Math.random() * this.w, cy = Math.random() * this.h;
-      const st = 0.006 + 0.018 * wk;
-      this.ripple(cx, cy, st);
-      this.ripple(cx + wax * 26, cy + way * 26, st * 0.8);
-      this.ripple(cx + wax * 52, cy + way * 52, st * 0.6);
+      const amp = 0.0016 * (0.5 + wk);
+      if (this.mode === 'gl' && this.glPack) {
+        const r = this.glPack.ripple;
+        const u = cx / this.w, v = 1 - cy / this.h;
+        r.drop(u, v, 0.022, amp);
+        r.drop(u + (wax * 26) / this.w, v - (way * 26) / this.h, 0.022, amp * 0.8);
+        r.drop(u + (wax * 52) / this.w, v - (way * 52) / this.h, 0.022, amp * 0.6);
+        r.drop(u, v, 0.055, amp * 2.2);
+      } else if (this.rings.length < 60) {
+        this.rings.push({ x: cx, y: cy, age: 0, max: 0.6 });
+      }
     }
 
     // 水花冲击荷叶（鱼跃/投食的落点旁，叶子被推得晃一下）

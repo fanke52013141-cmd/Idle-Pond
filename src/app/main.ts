@@ -103,9 +103,10 @@ setTimeout(() => { if (!ready) { loading.style.opacity = '0'; setTimeout(() => l
 let lastTrail: { x: number; y: number } | null = null;
 window.addEventListener('pointermove', (e) => {
   pointer = { x: e.clientX, y: e.clientY };
-  if (!lastTrail || Math.hypot(e.clientX - lastTrail.x, e.clientY - lastTrail.y) > 52) {
+  // 滑动尾迹：低频 + 微幅（壁纸不能抢桌面的注意力）；点击/双击的效果保持不变
+  if (!lastTrail || Math.hypot(e.clientX - lastTrail.x, e.clientY - lastTrail.y) > 150) {
     lastTrail = { x: e.clientX, y: e.clientY };
-    renderer.ripple(e.clientX, e.clientY, 0.3);
+    renderer.trail(e.clientX, e.clientY);
   }
 });
 window.addEventListener('pointerdown', (e) => {
