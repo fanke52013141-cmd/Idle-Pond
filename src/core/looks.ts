@@ -34,7 +34,7 @@ export function computeLook(sun: SunState, weather: 'sunny' | 'rain' = 'sunny', 
     lerp(0.9, 1.05, night),
   ];
   const specK = el * 1.35 * (1 - night) + 0.3;
-  const waveAmp = 0.3 + 0.45 * windK + 0.08 * night + (weather === 'rain' ? 0.2 : 0);
+  const waveAmp = 0.16 + 0.22 * windK + 0.05 * night + (weather === "rain" ? 0.12 : 0);
 
   return {
     sun,

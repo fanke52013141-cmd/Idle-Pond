@@ -1,39 +1,65 @@
 /** 小生物的即时绘制函数：体积小、形态简单，直接矢量画，不做贴图缓存 */
 
+import { plantSprites } from './plantSprites';
+
+/** 小鱼：AI 精灵优先；矢量版只预渲染一次（消灭每帧渐变创建） */
+let minnowFallback: HTMLCanvasElement | null = null;
+function minnowSprite(): HTMLCanvasElement | HTMLImageElement {
+  const ai = plantSprites.minnow(0);
+  if (ai) return ai;
+  if (!minnowFallback) {
+    const c = document.createElement('canvas');
+    c.width = 40;
+    c.height = 16;
+    const g = c.getContext('2d')!;
+    const grad = g.createLinearGradient(4, 0, 36, 0);
+    grad.addColorStop(0, 'rgba(160,186,186,0.85)');
+    grad.addColorStop(0.5, 'rgba(212,226,222,0.95)');
+    grad.addColorStop(1, 'rgba(198,214,210,0.9)');
+    g.fillStyle = grad;
+    g.beginPath();
+    g.ellipse(21, 8, 13, 4.5, 0, 0, Math.PI * 2);
+    g.fill();
+    g.beginPath();
+    g.moveTo(9, 8);
+    g.lineTo(2, 4);
+    g.lineTo(2, 12);
+    g.closePath();
+    g.fillStyle = 'rgba(178,198,194,0.75)';
+    g.fill();
+    g.fillStyle = 'rgba(20,32,30,0.85)';
+    g.beginPath();
+    g.arc(31, 8, 1.4, 0, Math.PI * 2);
+    g.fill();
+    minnowFallback = c;
+  }
+  return minnowFallback;
+}
+
 export function drawMinnow(ctx: CanvasRenderingContext2D, x: number, y: number, angle: number, size: number, panicK: number): void {
+  const sprite = minnowSprite();
+  const L = size * 3.4;
+  const W = L * (sprite.height / sprite.width);
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(angle);
-  const L = size * 3.2, W = size * 1.1;
-  // 尾摆
-  const wag = Math.sin(performance.now() * 0.02 + x) * 0.35;
-  ctx.rotate(wag * 0.2);
-  const g = ctx.createLinearGradient(-L / 2, 0, L / 2, 0);
-  const bright = 200 + Math.round(panicK * 40);
-  g.addColorStop(0, `rgba(160,186,186,0.8)`);
-  g.addColorStop(0.5, `rgba(${bright},${bright + 8},${bright},0.92)`);
-  g.addColorStop(1, `rgba(198,214,210,0.9)`);
-  ctx.fillStyle = g;
-  ctx.beginPath();
-  ctx.ellipse(0, 0, L / 2, W, 0, 0, Math.PI * 2);
-  ctx.fill();
-  // 尾鳍
-  ctx.beginPath();
-  ctx.moveTo(-L / 2 + 1, 0);
-  ctx.lineTo(-L / 2 - W * 1.5, -W * 0.9);
-  ctx.lineTo(-L / 2 - W * 1.5, W * 0.9);
-  ctx.closePath();
-  ctx.fillStyle = 'rgba(178,198,194,0.72)';
-  ctx.fill();
-  // 眼
-  ctx.fillStyle = 'rgba(20,32,30,0.85)';
-  ctx.beginPath();
-  ctx.arc(L * 0.32, 0, Math.max(0.7, size * 0.16), 0, Math.PI * 2);
-  ctx.fill();
+  if (panicK > 0) ctx.globalAlpha = 1;
+  ctx.drawImage(sprite as CanvasImageSource, -L / 2, -W / 2, L, W);
+  ctx.globalAlpha = 1;
   ctx.restore();
 }
 
 export function drawSnail(ctx: CanvasRenderingContext2D, x: number, y: number, angle: number, s: number, variant: number): void {
+  const ai = plantSprites.snail(variant);
+  if (ai) {
+    const L = s * 2.4;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle + Math.PI / 2); // 精灵头朝上 → 转到运动方向
+    ctx.drawImage(ai, -L / 2, -L / 2, L, L);
+    ctx.restore();
+    return;
+  }
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(angle);
@@ -67,6 +93,18 @@ export function drawSnail(ctx: CanvasRenderingContext2D, x: number, y: number, a
 }
 
 export function drawShrimp(ctx: CanvasRenderingContext2D, x: number, y: number, angle: number, s: number): void {
+  const ai = plantSprites.shrimp;
+  if (ai) {
+    const L = s * 2.6;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    ctx.globalAlpha = 0.9;
+    ctx.drawImage(ai, -L / 2, -L / 2, L, L);
+    ctx.globalAlpha = 1;
+    ctx.restore();
+    return;
+  }
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(angle);
@@ -121,6 +159,22 @@ export function drawBubble(ctx: CanvasRenderingContext2D, x: number, y: number, 
 }
 
 export function drawStrider(ctx: CanvasRenderingContext2D, x: number, y: number, heading: number, s: number): void {
+  const ai = plantSprites.strider;
+  if (ai) {
+    const L = s * 3.4;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(heading + Math.PI / 2); // 精灵头朝上 → 转到运动方向
+    ctx.drawImage(ai, -L / 2, -L / 2, L, L);
+    // 腿尖压痕
+    ctx.strokeStyle = 'rgba(244,250,240,0.3)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, s * 1.5, s * 0.55, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(heading);

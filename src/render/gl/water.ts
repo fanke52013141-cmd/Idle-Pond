@@ -1,4 +1,4 @@
-import { noiseTexture, program, VS_QUAD, type GL } from './common';
+import { flowNormalTexture, noiseTexture, program, VS_QUAD, type GL } from './common';
 import type { Look } from '../../core/looks';
 
 /**
@@ -9,14 +9,15 @@ import type { Look } from '../../core/looks';
 export class WaterPass {
   private prog: WebGLProgram;
   private noise: WebGLTexture;
+  private flow: WebGLTexture;
   private uniforms: Record<string, WebGLUniformLocation | null> = {};
 
   constructor(private g: GL) {
     const gl = g.gl;
     this.prog = program(gl, VS_QUAD, `#version 300 es
       precision highp float;
-      uniform sampler2D uScene, uRipple, uNoise;
-      uniform vec2 uView, uMoonPos;
+      uniform sampler2D uScene, uRipple, uNoise, uFlow;
+      uniform vec2 uView, uMoonPos, uFlowDir;
       uniform float uTime, uAspect, uRefract, uWaveAmp, uSpecK, uCausticK, uBright, uNightK, uNormC, uNormS;
       uniform vec3 uTint, uCausticTint, uSunColor;
       uniform vec2 uSunDir;
@@ -24,11 +25,13 @@ export class WaterPass {
       void main(){
         vec2 uv = gl_FragCoord.xy / uView;
 
-        // 基线微波：两层反向滚动的平滑噪声 → 持续的细波法线（减 1.0 才是零点；减 2.0 会退化成整体平移）
-        vec2 nuv = uv * vec2(uAspect, 1.0) * 3.1;
-        vec3 w1 = texture(uNoise, nuv + uTime * vec2(0.021, 0.012)).rgb;
-        vec3 w2 = texture(uNoise, nuv * 1.73 - uTime * vec2(0.016, 0.014)).rgb;
-        vec2 baseN = (w1.rg + w2.rg - vec2(1.0)) * uWaveAmp;
+        // 流动感：方向性波列法线图双层反向滚动（滚动方向受风偏置），这是"水在流"的来源
+        // 噪声调幅打破波列的均匀性（否则镜光会画出规律的对角亮带）
+        vec2 cuv = uv * vec2(uAspect, 1.0);
+        vec2 f1 = texture(uFlow, cuv * 1.0 + uFlowDir * uTime * 0.021).rg - 0.5;
+        vec2 f2 = texture(uFlow, cuv * 2.3 - uFlowDir * uTime * 0.014).rg - 0.5;
+        float mod_ = texture(uNoise, cuv * 1.3 + uTime * 0.008).r;
+        vec2 baseN = (f1 + f2 * 0.55) * uWaveAmp * (0.55 + 0.9 * mod_);
 
         // 涟漪法线（ba 通道；按模拟纹理的编码方式解码）
         vec4 rip = texture(uRipple, uv);
@@ -50,8 +53,7 @@ export class WaterPass {
         vec2 gx = (nr - nl) / uNormS;
         vec2 gy = (nu - nd) / uNormS;
         float divN = gx.x + gy.y;
-        float focus = clamp(-divN * 9.0, 0.0, 1.2);
-        vec2 cuv = uv * vec2(uAspect, 1.0);
+        float focus = clamp(-divN * 5.0, 0.0, 0.9);
         float base = texture(uNoise, cuv * 2.0 + uTime * vec2(0.02, 0.013)).b;
         float fine = texture(uNoise, cuv * 7.0 - uTime * vec2(0.014, 0.021)).g;
         float web = base * 0.62 + fine * 0.38;
@@ -59,10 +61,14 @@ export class WaterPass {
         float caust = max(focus, baseCaust) * uCausticK;
         scene += caust * uCausticTint;
 
-        // 波光：太阳/月亮方向的镜面高光（较宽的瓣，密集闪烁的碎金感）
+        // 波光：朝向太阳的镜面 + 碎金星点（高频噪声阈值化，随波面朝向出现/消失）
         vec3 N = normalize(vec3(grad, 1.0));
         vec3 L = normalize(vec3(uSunDir * 0.38, 1.0));
-        float spec = pow(max(dot(N, L), 0.0), 130.0) * uSpecK;
+        float facing = max(dot(N, L), 0.0);
+        float g1 = texture(uNoise, cuv * 9.0 + uTime * vec2(0.05, 0.03)).g;
+        float g2 = texture(uNoise, cuv * 15.0 - uTime * vec2(0.04, 0.06)).r;
+        float sparkle = pow(clamp(g1 * g2 * 3.1 - 1.35, 0.0, 1.0), 2.0);
+        float spec = (pow(facing, 130.0) * 0.75 + sparkle * 0.9 * pow(facing, 3.0)) * uSpecK;
         vec3 c = scene + spec * uSunColor;
 
         // 月影：柔和光晕 + 亮盘
@@ -77,7 +83,8 @@ export class WaterPass {
         o = vec4(c * uTint, 1.0);
       }`);
     this.noise = noiseTexture(gl);
-    for (const u of ['uScene', 'uRipple', 'uNoise', 'uView', 'uMoonPos', 'uTime', 'uAspect', 'uRefract', 'uWaveAmp', 'uSpecK', 'uCausticK', 'uBright', 'uNightK', 'uNormC', 'uNormS', 'uTint', 'uCausticTint', 'uSunColor', 'uSunDir']) {
+    this.flow = flowNormalTexture(gl);
+    for (const u of ['uScene', 'uRipple', 'uNoise', 'uFlow', 'uView', 'uMoonPos', 'uFlowDir', 'uTime', 'uAspect', 'uRefract', 'uWaveAmp', 'uSpecK', 'uCausticK', 'uBright', 'uNightK', 'uNormC', 'uNormS', 'uTint', 'uCausticTint', 'uSunColor', 'uSunDir']) {
       this.uniforms[u] = gl.getUniformLocation(this.prog, u);
     }
   }
@@ -88,6 +95,7 @@ export class WaterPass {
     normEncoded: boolean;
     viewW: number; viewH: number;
     time: number; look: Look;
+    wind?: { angle: number; k: number };
   }): void {
     const gl = this.g.gl;
     const u = this.uniforms;
@@ -102,6 +110,13 @@ export class WaterPass {
     gl.activeTexture(gl.TEXTURE2);
     gl.bindTexture(gl.TEXTURE_2D, this.noise);
     gl.uniform1i(u.uNoise!, 2);
+    gl.activeTexture(gl.TEXTURE3);
+    gl.bindTexture(gl.TEXTURE_2D, this.flow);
+    gl.uniform1i(u.uFlow!, 3);
+    // 流动方向：风的方向（uv 空间 y 向上，屏幕风 y 向下需翻转）；无风时默认东北向
+    const wdir = p.wind ?? { angle: 2.2, k: 0.32 };
+    const spd = 0.35 + wdir.k * 0.85;
+    gl.uniform2f(u.uFlowDir!, Math.cos(wdir.angle) * spd, -Math.sin(wdir.angle) * spd);
     gl.uniform2f(u.uView!, p.viewW, p.viewH);
     const sun = p.look.sun;
     // 太阳（昼）或月亮（夜）的屏幕方向：北=-y 东=+x

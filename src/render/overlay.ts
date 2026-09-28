@@ -31,34 +31,27 @@ export function renderOverlay(
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, w, h);
 
-  // ---- 荷叶与荷花（AI 精灵优先，未加载时回退程序化；夜间整体调暗） ----
+  // ---- 荷叶与荷花（AI 精灵优先，未加载时回退程序化；着色走缓存，零每帧 filter） ----
   const bright = look.elementBright;
-  const supportsFilter = 'filter' in ctx;
   const padScale = pond.scale;
   plantSprites.ensure();
+  const satQ = q(0.75 + 0.25 * (1 - look.sun.nightK), 0.1);
+  const brightQ = q(bright, 0.04);
   for (const p of plants.pads) {
     const [px, py] = plants.screenPos(p, w, h);
     const grow = 0.35 + 0.65 * p.age;
     const bob = Math.sin(plants.time * 1.1 + p.seed) * 1.4;
     const r = p.r * padScale * grow;
     const rot = p.rot + Math.sin(plants.time * 0.4 + p.seed * 1.7) * 0.03;
+    const sprite = plantSprites.pad(p.variant);
+    const src = sprite ?? getLilyPad(p.variant, p.health).canvas;
+    const filtered = tinted(src, brightQ, satQ, q((1 - p.health) * 0.45, 0.1));
     ctx.save();
     ctx.translate(px, py + bob);
     ctx.rotate(rot);
-    if (supportsFilter) {
-      // 健康度低 → 秋日黄褐感
-      ctx.filter = `brightness(${bright.toFixed(3)}) saturate(${(0.75 + 0.25 * (1 - look.sun.nightK)).toFixed(3)}) sepia(${((1 - p.health) * 0.45).toFixed(3)})`;
-    }
-    const sprite = plantSprites.pad(p.variant);
-    if (sprite) {
-      ctx.drawImage(sprite, -r, -r, r * 2, r * 2);
-    } else {
-      const sp = getLilyPad(p.variant, p.health);
-      ctx.drawImage(sp.canvas, -r, -r, r * 2, r * 2);
-    }
+    ctx.drawImage(filtered, -r, -r, r * 2, r * 2);
     ctx.restore();
   }
-  if (supportsFilter) ctx.filter = 'none';
   for (const l of plants.lotus) {
     const [px, py] = plants.screenPos(l, w, h);
     const openness = plants.lotusOpenness(l, look);
@@ -67,34 +60,36 @@ export function renderOverlay(
     ctx.translate(px + Math.sin(plants.time * 0.5 + l.seed) * 1.5, py + bob);
     // 风越大，花头摇得越明显
     ctx.rotate(Math.sin(plants.time * (0.33 + plants.windK * 0.2) + l.seed * 2.3) * (0.03 + 0.09 * plants.windK));
-    if (supportsFilter && bright < 0.98) ctx.filter = `brightness(${bright.toFixed(3)})`;
-    const flowerSprite = plantSprites.lotus;
-    if (l.phase === 'bloom' && flowerSprite && openness > 0.15) {
-      // AI 花朵：大小随开放度呼吸
-      const r = (14 + 16 * openness) * padScale;
-      ctx.drawImage(flowerSprite, -r, -r, r * 2, r * 2);
-    } else {
-      const sp = getLotus(l.variant, openness, l.phase);
-      const r = 26 * padScale * (l.phase === 'bud' ? 0.7 : 1);
-      ctx.drawImage(sp.canvas, -r, -r, r * 2, r * 2);
-    }
+    if (brightQ < 0.99) ctx.filter = `brightness(${brightQ.toFixed(3)})`;
+    drawLotusState(ctx, l, openness, padScale);
+    ctx.filter = 'none';
     ctx.restore();
   }
-  if (supportsFilter) ctx.filter = 'none';
 
-  // ---- 食物（水面） ----
+  // ---- 食物（水面）：AI 鱼食粒优先 ----
+  const pellet = plantSprites.pellet;
   for (const p of pond.food) {
     const fade = Math.min(1, p.life / 2);
     const pop = 1 + Math.max(0, 0.25 - p.age) * 1.6;
     const s = 0.72 * pop * (1 + Math.sin(performance.now() * 0.002 + p.drift) * 0.04) * pond.scale;
-    ctx.fillStyle = `rgba(222,192,132,${(0.95 * fade).toFixed(3)})`;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, s, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = `rgba(255,236,190,${(0.5 * fade).toFixed(3)})`;
-    ctx.beginPath();
-    ctx.arc(p.x - s * 0.3, p.y - s * 0.3, s * 0.4, 0, Math.PI * 2);
-    ctx.fill();
+    if (pellet) {
+      ctx.globalAlpha = 0.95 * fade;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.drift);
+      ctx.drawImage(pellet, -s * 1.4, -s * 1.4, s * 2.8, s * 2.8);
+      ctx.restore();
+      ctx.globalAlpha = 1;
+    } else {
+      ctx.fillStyle = `rgba(222,192,132,${(0.95 * fade).toFixed(3)})`;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, s, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = `rgba(255,236,190,${(0.5 * fade).toFixed(3)})`;
+      ctx.beginPath();
+      ctx.arc(p.x - s * 0.3, p.y - s * 0.3, s * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
   // ---- 浮萍 ----
@@ -165,3 +160,65 @@ const FIREFLIES: { x: number; y: number; seed: number; sp: number; z: number }[]
 // 临时 pose 缓冲（单鱼复用）
 const _pose = new Float32Array(68);
 function this_pose(): Float32Array { return _pose; }
+
+// ---- S2：着色精灵缓存。量化亮度/饱和/枯黄到桶位，预渲染后纯 drawImage，消灭每帧 ctx.filter ----
+const tintCache = new Map<string, HTMLCanvasElement>();
+function tinted(img: HTMLImageElement | HTMLCanvasElement, bright: number, sat: number, sepia: number): HTMLCanvasElement {
+  const key = `${bright.toFixed(2)}|${sat.toFixed(1)}|${sepia.toFixed(1)}|${img.width}x${img.height}`;
+  const hit = tintCache.get(key);
+  if (hit) return hit;
+  const c = document.createElement('canvas');
+  c.width = img.width;
+  c.height = img.height;
+  const g = c.getContext('2d')!;
+  g.filter = `brightness(${bright.toFixed(3)}) saturate(${sat.toFixed(3)}) sepia(${sepia.toFixed(3)})`;
+  g.drawImage(img, 0, 0);
+  if (tintCache.size > 48) tintCache.delete(tintCache.keys().next().value!);
+  tintCache.set(key, c);
+  return c;
+}
+const q = (v: number, step: number) => Math.round(v / step) * step;
+
+/** 荷花三态交叉淡化：花苞 → 半开 → 盛放（AI 精灵），缺失态回退程序化绘制 */
+function drawLotusState(ctx: CanvasRenderingContext2D, l: { variant: number; phase: 'bud' | 'bloom' | 'seedpod' }, openness: number, padScale: number): void {
+  const r0 = 26 * padScale;
+  if (l.phase === 'seedpod') {
+    const sp = getLotus(l.variant, 0, 'seedpod');
+    ctx.drawImage(sp.canvas, -r0, -r0, r0 * 2, r0 * 2);
+    return;
+  }
+  const full = plantSprites.lotus;
+  const half = plantSprites.lotusHalf;
+  const bud = plantSprites.lotusBud;
+  const smooth = (a: number, b: number, v: number) => {
+    const t = Math.min(1, Math.max(0, (v - a) / (b - a)));
+    return t * t * (3 - 2 * t);
+  };
+  if (!full || !half || !bud) {
+    // 回退：程序化（其内部按 openness 画花瓣张角）
+    const sp = getLotus(l.variant, openness, l.phase);
+    const r = r0 * (l.phase === 'bud' ? 0.7 : 1);
+    ctx.drawImage(sp.canvas, -r, -r, r * 2, r * 2);
+    return;
+  }
+  // 苞：openness 低时可见
+  const aBud = (1 - smooth(0.22, 0.5, openness)) * smooth(0, 0.1, openness);
+  const aHalf = smooth(0.25, 0.45, openness) * (1 - smooth(0.62, 0.85, openness));
+  const aFull = smooth(0.62, 0.88, openness);
+  if (aBud > 0.02) {
+    ctx.globalAlpha = aBud;
+    const r = r0 * 0.6;
+    ctx.drawImage(bud, -r, -r, r * 2, r * 2);
+  }
+  if (aHalf > 0.02) {
+    ctx.globalAlpha = aHalf;
+    const r = r0 * 0.82;
+    ctx.drawImage(half, -r, -r, r * 2, r * 2);
+  }
+  if (aFull > 0.02) {
+    ctx.globalAlpha = aFull;
+    const r = r0;
+    ctx.drawImage(full, -r, -r, r * 2, r * 2);
+  }
+  ctx.globalAlpha = 1;
+}

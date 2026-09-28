@@ -4,6 +4,8 @@ import { TAU, clamp } from './utils';
 
 interface Minnow {
   x: number; y: number; vx: number; vy: number;
+  ang: number;              // 平滑后的朝向（S5：消除转向折角）
+  variant: number;
   seed: number; panic: number;
 }
 
@@ -20,6 +22,8 @@ export class MinnowSchool {
         y: 0.42 + Math.sin(a) * 0.03 * Math.random(),
         vx: Math.cos(a) * 30,
         vy: Math.sin(a) * 30,
+        ang: a,
+        variant: i % 2,
         seed: Math.random() * 100,
         panic: 0,
       });
@@ -110,12 +114,15 @@ export class MinnowSchool {
       f.x = Math.min(0.985, Math.max(0.015, f.x + (f.vx * dt) / w));
       f.y = Math.min(0.985, Math.max(0.015, f.y + (f.vy * dt) / h));
       f.panic = Math.max(0, f.panic - dt);
-      // 深度随群：给一点个体差异，绘制时用作雾
-      f.seed;
+      // 朝向插值：转向有过程，没有瞬移折角
+      const target = Math.atan2(f.vy, f.vx);
+      let d = target - f.ang;
+      d = Math.atan2(Math.sin(d), Math.cos(d));
+      f.ang += d * Math.min(1, dt * 7);
     }
   }
 
   heading(f: Minnow): number {
-    return Math.atan2(f.vy, f.vx);
+    return f.ang;
   }
 }

@@ -63,7 +63,7 @@ export class RippleSim {
                    + ${readH.replace('t.r', 'texture(uTex, vUv-dy).r')} + ${readH.replace('t.r', 'texture(uTex, vUv+dy).r')}) * 0.25;
         float v = ${readV};
         v += (avg - h) * 2.0;
-        v *= 0.995;
+        v *= 0.992;
         h += v;
         o = vec4(${writeH}, ${writeV}, t.ba);
       }`);
@@ -119,7 +119,7 @@ export class RippleSim {
   }
 
   /** 斜率增益：控制涟漪法线 → 折射位移的可见强度 */
-  slope = 22;
+  slope = 5;
 
   step(n = 2): void {    const gl = this.g.gl;
     for (let i = 0; i < n; i++) {

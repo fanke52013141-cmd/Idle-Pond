@@ -1,7 +1,14 @@
-/** AI 生成的植物精灵（透明底 PNG）：荷叶两变体 + 荷花。加载完成前回退程序化绘制 */
+/** AI 生成的植物精灵（透明底 PNG）：荷叶两变体 + 荷花三态。加载完成前回退程序化绘制 */
 class PlantSpriteStore {
   pads: HTMLImageElement[] = [];
-  lotus: HTMLImageElement | null = null;
+  lotus: HTMLImageElement | null = null;      // 盛放
+  lotusHalf: HTMLImageElement | null = null;  // 半开
+  lotusBud: HTMLImageElement | null = null;   // 花苞
+  minnows: HTMLImageElement[] = [];
+  shrimp: HTMLImageElement | null = null;
+  snails: HTMLImageElement[] = [];
+  strider: HTMLImageElement | null = null;
+  pellet: HTMLImageElement | null = null;
   private started = false;
 
   ensure(): void {
@@ -10,21 +17,35 @@ class PlantSpriteStore {
     const load = (src: string, into: (img: HTMLImageElement) => void) => {
       const img = new Image();
       img.onload = () => {
-        // 校验确实带透明通道（模型偶尔不遵守 transparent）
         if (img.naturalWidth > 0) into(img);
       };
       img.onerror = () => { /* 保持回退 */ };
       img.src = src;
     };
-    for (const v of ['a', 'b']) {
-      load(`./assets/pad-${v}.png`, (img) => this.pads.push(img));
-    }
+    for (const v of ['a', 'b']) load(`./assets/pad-${v}.png`, (img) => this.pads.push(img));
     load('./assets/lotus.png', (img) => (this.lotus = img));
+    load('./assets/lotus-half.png', (img) => (this.lotusHalf = img));
+    load('./assets/lotus-bud.png', (img) => (this.lotusBud = img));
+    for (const v of ['a', 'b']) load(`./assets/minnow-${v}.png`, (img) => this.minnows.push(img));
+    load('./assets/shrimp.png', (img) => (this.shrimp = img));
+    for (const v of ['a', 'b']) load(`./assets/snail-${v}.png`, (img) => this.snails.push(img));
+    load('./assets/strider.png', (img) => (this.strider = img));
+    load('./assets/pellet.png', (img) => (this.pellet = img));
   }
 
   pad(variant: number): HTMLImageElement | null {
     if (!this.pads.length) return null;
     return this.pads[((variant % this.pads.length) + this.pads.length) % this.pads.length];
+  }
+
+  minnow(variant: number): HTMLImageElement | null {
+    if (!this.minnows.length) return null;
+    return this.minnows[((variant % this.minnows.length) + this.minnows.length) % this.minnows.length];
+  }
+
+  snail(variant: number): HTMLImageElement | null {
+    if (!this.snails.length) return null;
+    return this.snails[((variant % this.snails.length) + this.snails.length) % this.snails.length];
   }
 }
 

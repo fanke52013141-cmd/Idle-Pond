@@ -176,20 +176,23 @@ function stepAll(dt: number): void {
   if (jumps.active) jumps.active.fish.jump = { t: jumps.active.t, dur: jumps.active.dur, dirX: jumps.active.dirX, dirY: jumps.active.dirY, power: jumps.active.power };
 }
 
-// ---- 主循环 ----
+// ---- 主循环：rAF 直驱 + dt 钳制（删除阈值节流——那是帧间隔抖动/不丝滑的来源）；eco=隔帧渲染 ----
 const fpsEl = document.getElementById('fps')!;
 let last = 0;
 let frames = 0;
 let fpsClock = 0;
 let saveClock = 0;
+let ecoSkip = false;
 
 function frame(now: number): void {
   requestAnimationFrame(frame);
-  const interval = 1000 / (quality === 'eco' ? 30 : 60);
-  if (now - last < interval * 0.8) return;
   const dt = last ? Math.min((now - last) / 1000, 0.05) : 0.016;
   last = now;
   if (document.hidden) return;
+  if (quality === 'eco') {
+    ecoSkip = !ecoSkip;
+    if (ecoSkip) return;
+  }
 
   stepAll(dt);
   renderer.render({ pond, plants, school, critters, jumps, look: look(), wind, dt, quality: waterQ });

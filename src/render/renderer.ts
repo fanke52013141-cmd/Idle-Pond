@@ -132,8 +132,8 @@ export class PondRenderer {
       const u = x / this.w;
       const v = 1 - y / this.h;
       const k = Math.min(2.5, Math.max(0.25, strength));
-      r.drop(u, v, 0.022, 0.075 * k);
-      r.drop(u, v, 0.055, 0.045 * k);
+      r.drop(u, v, 0.022, 0.02 * k);
+      r.drop(u, v, 0.055, 0.012 * k);
       return;
     }
     if (this.rings.length < 60) this.rings.push({ x, y, age: 0, max: 1 + Math.min(2, strength * 3) });
@@ -143,7 +143,7 @@ export class PondRenderer {
     this.particles.splash(x, y, power);
     if (this.mode === 'gl') {
       this.ripple(x, y, 1.2 + power);
-      if (this.glPack) this.glPack.ripple.drop(x / this.w, 1 - y / this.h, 0.05, 0.16 * power);
+      if (this.glPack) this.glPack.ripple.drop(x / this.w, 1 - y / this.h, 0.05, 0.035 * power);
     } else {
       this.ripple(x, y, 2);
     }
@@ -160,7 +160,7 @@ export class PondRenderer {
     if (this.windTimer <= 0) {
       this.windTimer = 0.85 + Math.random() * 1.2;
       const cx = Math.random() * this.w, cy = Math.random() * this.h;
-      const st = 0.05 + 0.16 * wk;
+      const st = 0.006 + 0.018 * wk;
       this.ripple(cx, cy, st);
       this.ripple(cx + wax * 26, cy + way * 26, st * 0.8);
       this.ripple(cx + wax * 52, cy + way * 52, st * 0.6);
@@ -181,7 +181,7 @@ export class PondRenderer {
       const t = (this.wakeTimers.get(f) ?? 0) - dt;
       if (t <= 0) {
         const s = f.size * pond.scale;
-        this.ripple(f.x * w + Math.cos(f.angle) * KOI_BODY.nose * s, f.y * h + Math.sin(f.angle) * KOI_BODY.nose * s, 0.04 * (1 - f.depth / 0.22) * Math.min(2, bl));
+        this.ripple(f.x * w + Math.cos(f.angle) * KOI_BODY.nose * s, f.y * h + Math.sin(f.angle) * KOI_BODY.nose * s, 0.014 * (1 - f.depth / 0.22) * Math.min(2, bl));
         this.wakeTimers.set(f, 0.15);
       } else this.wakeTimers.set(f, t);
     }
@@ -210,6 +210,7 @@ export class PondRenderer {
         viewH: this.waterCanvas.height,
         time: this.time,
         look,
+        wind: a.wind,
       });
     } else {
       // 2D 降级：M0 画质直绘

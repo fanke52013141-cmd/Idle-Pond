@@ -58,7 +58,7 @@ export class Critters {
       }
       if (s.rippleT <= 0) {
         s.rippleT = 0.55;
-        onRipple(s.x, s.y, 0.12);
+        onRipple(s.x, s.y, 0.045);
       }
       if (pointer) {
         const pd = Math.hypot(s.x - pointer.x, s.y - pointer.y);
@@ -68,7 +68,7 @@ export class Critters {
           s.y += Math.sin(a) * 46;
           s.tx = s.x; s.ty = s.y;
           s.hopT = 0.5;
-          onRipple(s.x, s.y, 0.5);
+          onRipple(s.x, s.y, 0.18);
         }
       }
       s.hopT = Math.max(0, s.hopT - dt);
@@ -131,7 +131,7 @@ export class Critters {
       b.vy *= 1 + dt * 0.35;
       b.x += Math.sin(b.age * 5 + b.wob) * 6 * dt;
       if (b.y < 12) {
-        onRipple(b.x, b.y, 0.08);
+        onRipple(b.x, b.y, 0.03);
         this.bubbles.splice(i, 1);
       }
     }

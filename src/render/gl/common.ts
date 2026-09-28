@@ -136,3 +136,47 @@ export function noiseTexture(gl: WebGL2RenderingContext, size = 256): WebGLTextu
 function clamp01n(x: number): number {
   return x < 0 ? 0 : x > 1 ? 1 : x;
 }
+
+/**
+ * 方向性波纹法线图（可平铺）：3 组不同方向/波长的正弦波列的解析法线。
+ * 这是"水在流动"的来源——与 value-noise 的无序颗粒不同，它有明确的波列走向。
+ * R,G = 法线 xy（0.5 中心编码），B = 波高（可选用）。
+ */
+export function flowNormalTexture(gl: WebGL2RenderingContext, size = 256): WebGLTexture {
+  const data = new Uint8Array(size * size * 4);
+  const trains = [
+    { dx: 1, dy: 0.28, cycles: 5, amp: 0.5 },
+    { dx: -0.62, dy: 1, cycles: 9, amp: 0.32 },
+    { dx: 0.5, dy: -1, cycles: 14, amp: 0.18 },
+  ];
+  for (const t of trains) {
+    const l = Math.hypot(t.dx, t.dy);
+    t.dx /= l;
+    t.dy /= l;
+  }
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const u = x / size, v = y / size;
+      let nx = 0, ny = 0, h = 0;
+      for (const t of trains) {
+        const ph = (u * t.dx + v * t.dy) * t.cycles * Math.PI * 2;
+        h += t.amp * Math.sin(ph);
+        nx += t.amp * t.cycles * t.dx * Math.cos(ph);
+        ny += t.amp * t.cycles * t.dy * Math.cos(ph);
+      }
+      const i = (y * size + x) * 4;
+      data[i] = Math.round(255 * clamp01n(nx * 0.24 + 0.5));
+      data[i + 1] = Math.round(255 * clamp01n(ny * 0.24 + 0.5));
+      data[i + 2] = Math.round(255 * clamp01n(h * 0.5 + 0.5));
+      data[i + 3] = 255;
+    }
+  }
+  const tex = gl.createTexture()!;
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, size, size, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
+  return tex;
+}
