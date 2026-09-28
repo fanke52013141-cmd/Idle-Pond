@@ -1,0 +1,17 @@
+{
+  "name": "he-tang-yue-se",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "荷塘月色 · Moonlotus Pond — 一方青瓷池塘动态壁纸",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2",
+    "vite": "^5.4.20"
+  }
+}
