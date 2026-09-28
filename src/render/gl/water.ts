@@ -25,13 +25,13 @@ export class WaterPass {
       void main(){
         vec2 uv = gl_FragCoord.xy / uView;
 
-        // 流动感：方向性波列法线图双层反向滚动（滚动方向受风偏置），这是"水在流"的来源
-        // 噪声调幅打破波列的均匀性（否则镜光会画出规律的对角亮带）
+        // 自然水纹：细碎频谱法线图双层采样（1.0 / 2.6 两种尺度），滚动受风偏置。
+        // 没有看得见的"波带"，只有有机的细碎闪动——这才是自然水面的质感
         vec2 cuv = uv * vec2(uAspect, 1.0);
         vec2 f1 = texture(uFlow, cuv * 1.0 + uFlowDir * uTime * 0.021).rg - 0.5;
-        vec2 f2 = texture(uFlow, cuv * 2.3 - uFlowDir * uTime * 0.014).rg - 0.5;
+        vec2 f2 = texture(uFlow, cuv * 2.6 - uFlowDir * uTime * 0.015).rg - 0.5;
         float mod_ = texture(uNoise, cuv * 1.3 + uTime * 0.008).r;
-        vec2 baseN = (f1 + f2 * 0.55) * uWaveAmp * (0.55 + 0.9 * mod_);
+        vec2 baseN = (f1 * 1.15 + f2 * 0.6) * uWaveAmp * (0.6 + 0.8 * mod_);
 
         // 涟漪法线（ba 通道；按模拟纹理的编码方式解码）
         vec4 rip = texture(uRipple, uv);
