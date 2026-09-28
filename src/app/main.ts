@@ -101,6 +101,8 @@ setTimeout(() => { if (!ready) { loading.style.opacity = '0'; setTimeout(() => l
 
 // ---- 交互 ----
 let lastTrail: { x: number; y: number } | null = null;
+let clickCombo = 0;
+let lastClickAt = 0;
 window.addEventListener('pointermove', (e) => {
   pointer = { x: e.clientX, y: e.clientY };
   // 滑动尾迹：低频 + 微幅（壁纸不能抢桌面的注意力）；点击/双击的效果保持不变
@@ -110,10 +112,15 @@ window.addEventListener('pointermove', (e) => {
   }
 });
 window.addEventListener('pointerdown', (e) => {
+  // 点击响度分级：单击轻响，1.2s 内连续点则渐强（封顶），贴合"连点喂鱼"的心智
+  const now = performance.now();
+  clickCombo = now - lastClickAt < 1200 ? Math.min(6, clickCombo + 1) : 0;
+  lastClickAt = now;
+  const power = 0.22 + clickCombo * 0.11;
   if (pond.feed(e.clientX, e.clientY)) {
-    renderer.splash(e.clientX, e.clientY, 0.55);
+    renderer.splash(e.clientX, e.clientY, power);
   } else {
-    renderer.ripple(e.clientX, e.clientY, 1);
+    renderer.ripple(e.clientX, e.clientY, 0.6);
   }
 });
 window.addEventListener('dblclick', (e) => {
