@@ -40,15 +40,17 @@ export class WaterPass {
         ruv = clamp(ruv, vec2(0.001), vec2(0.999));
         vec3 scene = texture(uScene, ruv).rgb;
 
-        // 焦散：波峰（拉普拉斯为负处）聚光；叠加缓慢移动的细密基底光网
+        // 焦散：涟漪法线的散度（会聚处增亮）+ 缓慢移动的细密基底光网
         vec2 dpx = 1.5 / uView;
-        float h  = texture(uRipple, uv).r;
-        float hl = texture(uRipple, uv - vec2(dpx.x, 0.0)).r;
-        float hr = texture(uRipple, uv + vec2(dpx.x, 0.0)).r;
-        float hd = texture(uRipple, uv - vec2(0.0, dpx.y)).r;
-        float hu = texture(uRipple, uv + vec2(0.0, dpx.y)).r;
-        float lap = (hl + hr + hd + hu) * 0.25 - h;
-        float focus = clamp(-lap * 26.0, 0.0, 1.2);
+        vec2 cc = vec2(uNormC);
+        vec2 nl = texture(uRipple, uv - vec2(dpx.x, 0.0)).ba;
+        vec2 nr = texture(uRipple, uv + vec2(dpx.x, 0.0)).ba;
+        vec2 nd = texture(uRipple, uv - vec2(0.0, dpx.y)).ba;
+        vec2 nu = texture(uRipple, uv + vec2(0.0, dpx.y)).ba;
+        vec2 gx = (nr - nl) / uNormS;
+        vec2 gy = (nu - nd) / uNormS;
+        float divN = gx.x + gy.y;
+        float focus = clamp(-divN * 9.0, 0.0, 1.2);
         vec2 cuv = uv * vec2(uAspect, 1.0);
         float base = texture(uNoise, cuv * 2.0 + uTime * vec2(0.02, 0.013)).b;
         float fine = texture(uNoise, cuv * 7.0 - uTime * vec2(0.014, 0.021)).g;
