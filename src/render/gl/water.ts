@@ -25,12 +25,12 @@ export class WaterPass {
       void main(){
         vec2 uv = gl_FragCoord.xy / uView;
 
-        // 自然水纹：细碎频谱法线图双层采样（1.0 / 2.6 两种尺度），滚动受风偏置。
+        // 自然水纹：细碎频谱法线图双层采样（1.9 / 4.3 两种尺度），滚动受风偏置。
         // 没有看得见的"波带"，只有有机的细碎闪动——这才是自然水面的质感
         vec2 cuv = uv * vec2(uAspect, 1.0);
-        vec2 f1 = texture(uFlow, cuv * 1.0 + uFlowDir * uTime * 0.021).rg - 0.5;
-        vec2 f2 = texture(uFlow, cuv * 2.6 - uFlowDir * uTime * 0.015).rg - 0.5;
-        float mod_ = texture(uNoise, cuv * 1.3 + uTime * 0.008).r;
+        vec2 f1 = texture(uFlow, cuv * 1.9 + uFlowDir * uTime * 0.014).rg - 0.5;
+        vec2 f2 = texture(uFlow, cuv * 4.3 - uFlowDir * uTime * 0.010).rg - 0.5;
+        float mod_ = texture(uNoise, cuv * 2.2 + uTime * 0.008).r;
         vec2 baseN = (f1 * 1.15 + f2 * 0.6) * uWaveAmp * (0.6 + 0.8 * mod_);
 
         // 涟漪法线（ba 通道；按模拟纹理的编码方式解码）
@@ -54,8 +54,8 @@ export class WaterPass {
         vec2 gy = (nu - nd) / uNormS;
         float divN = gx.x + gy.y;
         float focus = clamp(-divN * 5.0, 0.0, 0.9);
-        float base = texture(uNoise, cuv * 2.0 + uTime * vec2(0.02, 0.013)).b;
-        float fine = texture(uNoise, cuv * 7.0 - uTime * vec2(0.014, 0.021)).g;
+        float base = texture(uNoise, cuv * 3.2 + uTime * vec2(0.02, 0.013)).b;
+        float fine = texture(uNoise, cuv * 11.0 - uTime * vec2(0.014, 0.021)).g;
         float web = base * 0.62 + fine * 0.38;
         float baseCaust = pow(clamp(web * 1.6 - 0.68, 0.0, 1.0), 2.0) * 0.4;
         float caust = max(focus, baseCaust) * uCausticK;

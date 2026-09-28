@@ -150,12 +150,12 @@ export function flowNormalTexture(gl: WebGL2RenderingContext, size = 256): WebGL
   const trains: { dx: number; dy: number; cycles: number; amp: number }[] = [];
   for (let i = 0; i < 16; i++) {
     const a = rnd() * Math.PI * 2;
-    const cycles = 14 + Math.floor(rnd() * 50);
+    const cycles = 26 + Math.floor(rnd() * 85);
     trains.push({
       dx: Math.cos(a),
       dy: Math.sin(a),
       cycles,
-      amp: (1 / Math.pow(cycles, 0.9)) * (0.75 + rnd() * 0.5),
+      amp: (1 / Math.pow(cycles, 1.1)) * (0.75 + rnd() * 0.5),
     });
   }
   const hBuf = new Float32Array(size * size);
