@@ -11,7 +11,8 @@ export function makeFish(index: number, rng: () => number = Math.random): FishDa
   return {
     id: `koi-${Date.now().toString(36)}-${index}`,
     name: NAMES[index % NAMES.length],
-    palette: index % 7,
+    // 每 4 尾有一尾是金鱼型（圆身大尾）：花色 7/8
+    palette: index % 4 === 3 ? 7 + (index % 2) : index % 7,
     seed: Math.floor(rng() * 1e5),
     size,
     x: 0.18 + rng() * 0.64,

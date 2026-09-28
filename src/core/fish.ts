@@ -15,7 +15,7 @@ export interface FishDataLike {
   bornAt?: number;
 }
 
-const PALETTE_COUNT = 7;
+const PALETTE_COUNT = 9;
 
 export function sanitizeFish(f: FishDataLike, index = 0): FishDataLike | null {
   if (!f || typeof f !== 'object') return null;

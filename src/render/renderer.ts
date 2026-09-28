@@ -5,6 +5,7 @@ import type { Look } from '../core/looks';
 import type { MinnowSchool } from '../core/minnow';
 import type { Plants } from '../core/plants';
 import type { Pond } from '../core/pond';
+import type { TurtleSystem } from '../core/turtle';
 import { Scene2D } from './scene2d';
 import { renderOverlay } from './overlay';
 import { Particles } from './particles';
@@ -19,6 +20,7 @@ export interface RenderArgs {
   plants: Plants;
   school: MinnowSchool;
   critters: Critters;
+  turtles: TurtleSystem;
   jumps: JumpSystem;
   look: Look;
   wind: { angle: number; k: number };
@@ -212,7 +214,7 @@ export class PondRenderer {
       const sceneCtx = this.sceneCanvas.getContext('2d')!;
       const q = this.sceneCanvas.width / Math.max(1, this.w);
       // 场景层在缩放坐标系里绘制（dpr 传 q），世界坐标仍是 CSS px
-      this.scene.render(sceneCtx, this.w, this.h, q, { pond, plants: a.plants, school: a.school, critters: a.critters, look }, this.bed);
+      this.scene.render(sceneCtx, this.w, this.h, q, { pond, plants: a.plants, school: a.school, critters: a.critters, turtles: a.turtles, look }, this.bed);
       gl.bindTexture(gl.TEXTURE_2D, sceneTex);
       gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
       gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, this.sceneCanvas);
@@ -234,7 +236,7 @@ export class PondRenderer {
       const ctx = this.ctx2d;
       if (!ctx) return;
       const dpr = Math.min(this.dpr, 1.5);
-      this.scene.render(ctx, this.w, this.h, dpr, { pond, plants: a.plants, school: a.school, critters: a.critters, look }, this.bedRich ?? this.bed);
+      this.scene.render(ctx, this.w, this.h, dpr, { pond, plants: a.plants, school: a.school, critters: a.critters, turtles: a.turtles, look }, this.bedRich ?? this.bed);
       const nk = look.sun.nightK;
       if (nk > 0) this.drawNightFallback(ctx, this.w, this.h, dpr, look);
       for (const r of this.rings) {

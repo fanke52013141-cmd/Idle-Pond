@@ -1,11 +1,14 @@
 import { getKoiSprites } from '../art/koi';
 import { drawMinnow, drawBubble, drawSnail, drawShrimp } from '../art/critters';
+import { plantSprites } from '../art/plantSprites';
 import { bodyHalfWidth, girthOf, KOI_BODY, SEG_UNITS } from '../core/body';
 import type { MinnowSchool } from '../core/minnow';
 import type { Plants } from '../core/plants';
 import type { Critters } from '../core/critters';
+import type { TurtleSystem } from '../core/turtle';
 import { poseSpine } from '../core/spine';
 import type { Fish } from '../core/types';
+import { PALETTES } from '../core/types';
 import type { Pond } from '../core/pond';
 import type { Look } from '../core/looks';
 import { clamp } from '../core/utils';
@@ -16,6 +19,7 @@ export interface SceneWorld {
   plants: Plants;
   school: MinnowSchool;
   critters: Critters;
+  turtles: TurtleSystem;
   look: Look;
 }
 
@@ -45,7 +49,7 @@ export class Scene2D {
   ): void {
     this.dpr = dpr;
     this.ctx = ctx;
-    const { pond, plants, critters, school, look } = world;
+    const { pond, plants, critters, school, turtles, look } = world;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     if (bed) {
@@ -80,6 +84,29 @@ export class Scene2D {
     }
     for (const s of critters.shrimps) {
       drawShrimp(ctx, s.nx * w, s.ny * h, s.angle, 10 * pond.scale);
+    }
+
+    // 乌龟（水下巡游；精灵头朝上 → 旋转到运动方向）
+    for (const t of turtles.turtles) {
+      const sp = plantSprites.turtle(t.variant);
+      const s = 46 * pond.scale;
+      const tx = t.nx * w, ty = t.ny * h;
+      const dir = look.sun.shadowDir;
+      const tOff = (8 + (1 - t.depth) * 26) * pond.scale * look.sun.shadowLen;
+      ctx.fillStyle = `rgba(8,26,24,${(0.2 * (0.4 + 0.6 * look.sun.intensity)).toFixed(3)})`;
+      ctx.beginPath();
+      ctx.ellipse(tx + dir[0] * tOff, ty + dir[1] * tOff, s * 0.52, s * 0.46, t.angle, 0, Math.PI * 2);
+      ctx.fill();
+      if (sp) {
+        ctx.save();
+        ctx.translate(tx, ty);
+        ctx.rotate(t.angle + Math.PI / 2);
+        const fogT = 0.04 + t.depth * 0.2;
+        ctx.globalAlpha = 1 - fogT;
+        ctx.drawImage(sp, -s / 2, -s / 2, s, s);
+        ctx.globalAlpha = 1;
+        ctx.restore();
+      }
     }
 
     // 小鱼群（略深，带一点雾感）
@@ -127,11 +154,12 @@ export class Scene2D {
     const bl = f.v / L;
     const baseSpread = 1.05 - 0.6 * clamp(bl / 1.4, 0, 1) + (f.thrust < 0.3 ? Math.sin(performance.now() * 0.0042 + f.seed) * 0.16 : 0);
     const girth = girthOf(f.seed);
+    const pal = PALETTES[f.palette % PALETTES.length];
     const fins: [number, number, number][] = [[4, 0.95, 1], [8, 0.55, 0.58]];
     for (const [i, spreadK, size] of fins) {
       const px = pose[i * 4], py = pose[i * 4 + 1], nx = pose[i * 4 + 2], ny = pose[i * 4 + 3];
       const heading = Math.atan2(-nx, ny);
-      const hw = bodyHalfWidth(KOI_BODY.nose - i * SEG_UNITS, girth) * s * 0.8;
+      const hw = bodyHalfWidth(KOI_BODY.nose - i * SEG_UNITS, girth, pal.kind) * s * 0.8;
       for (const side of [1, -1] as const) {
         const spread = (baseSpread + clamp(side * f.turn * 0.35, -0.3, 0.5)) * spreadK;
         const ang = heading + side * (Math.PI - spread);

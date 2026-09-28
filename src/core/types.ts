@@ -1,4 +1,4 @@
-export type KoiKind = 'kohaku' | 'sanke' | 'ogon' | 'utsuri' | 'tancho' | 'sumi' | 'beni';
+export type KoiKind = 'kohaku' | 'sanke' | 'ogon' | 'utsuri' | 'tancho' | 'sumi' | 'beni' | 'goldfish';
 
 export interface KoiPalette {
   name: string;
@@ -18,6 +18,8 @@ export const PALETTES: KoiPalette[] = [
   { name: '丹顶', base: '#f7f4eb', spot: '#cc3e2a', fin: '#f3f2ea', kind: 'tancho' },
   { name: '墨鲤', base: '#2c3332', spot: '#181e1f', fin: '#47504d', kind: 'sumi' },
   { name: '绯鲤', base: '#c73326', spot: '#c73326', fin: '#c93a2e', kind: 'beni' },
+  { name: '金鱼红', base: '#d9542a', spot: '#d9542a', fin: '#f2a05a', kind: 'goldfish' },
+  { name: '五花', base: '#e9e1d1', spot: '#d86a2e', second: '#3a4a52', fin: '#f0c890', kind: 'goldfish' },
 ];
 
 /** 持久化的鱼数据（存档只保留这一层） */

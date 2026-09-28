@@ -94,6 +94,12 @@ export class MinnowSchool {
         const d = bd || 1;
         fx += ((best.x - px) / d) * 46;
         fy += ((best.y - py) / d) * 46;
+        // 抢食旋涡：贴近食点时叠加切向力，鱼群绕着食物打转"闹"起来
+        if (d < 130) {
+          const tang = Math.atan2(py - best.y, px - best.x) + Math.PI / 2;
+          fx += Math.cos(tang) * 52 * (1 - d / 130);
+          fy += Math.sin(tang) * 52 * (1 - d / 130);
+        }
         if (bd < 8) best.eaten = true; // 小鱼叼走，不计入锦鲤食量
       }
 

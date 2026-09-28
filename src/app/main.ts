@@ -3,6 +3,7 @@ import { computeLook } from '../core/looks';
 import { MinnowSchool } from '../core/minnow';
 import { Plants } from '../core/plants';
 import { Pond, makeFish } from '../core/pond';
+import { TurtleSystem } from '../core/turtle';
 import { applyPlantsSave, loadSave, writeSave } from '../core/save';
 import { sunState } from '../core/sun';
 import { Wind } from '../core/wind';
@@ -21,6 +22,7 @@ const school = new MinnowSchool(18);
 const critters = new Critters();
 const jumps = new JumpSystem();
 const wind = new Wind();
+const turtles = new TurtleSystem(2);
 
 // ---- 存档恢复 ----
 const save = loadSave();
@@ -161,13 +163,13 @@ function look() {
 // ---- 调试句柄 ----
 if (new URLSearchParams(location.search).has('debug')) {
   (window as unknown as Record<string, unknown>).__pond = {
-    pond, plants, school, critters, jumps, renderer, wind,
+    pond, plants, school, critters, jumps, renderer, wind, turtles,
     forceRender(frames = 1, nightK?: number): void {
       for (let i = 0; i < frames; i++) {
         const lk = look();
         if (nightK !== undefined) lk.sun.nightK = nightK;
         stepAll(1 / 60);
-        renderer.render({ pond, plants, school, critters, jumps, look: lk, wind, dt: 1 / 60, quality: waterQ });
+        renderer.render({ pond, plants, school, critters, turtles, jumps, look: lk, wind, dt: 1 / 60, quality: waterQ });
       }
     },
   };
@@ -176,6 +178,7 @@ if (new URLSearchParams(location.search).has('debug')) {
 function stepAll(dt: number): void {
   pond.step(dt);
   wind.update(dt);
+  turtles.update(dt, pond, (x, y, s) => renderer.ripple(x, y, s), (x, y) => critters.bubbles.push({ x, y, r: 1 + Math.random() * 1.4, vy: 10, wob: Math.random() * 10, age: 0 }));
   plants.update(dt, look(), nowDate(), wind);
   school.update(dt, pond, pointer ? [pointer] : []);
   critters.update(dt, pond, pointer, (x, y, s) => renderer.ripple(x, y, s), wind);
@@ -203,7 +206,7 @@ function frame(now: number): void {
   }
 
   stepAll(dt);
-  renderer.render({ pond, plants, school, critters, jumps, look: look(), wind, dt, quality: waterQ });
+  renderer.render({ pond, plants, school, critters, turtles, jumps, look: look(), wind, dt, quality: waterQ });
 
   frames++;
   fpsClock += dt;

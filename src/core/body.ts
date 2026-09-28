@@ -31,18 +31,19 @@ export const girthOf = (seed: number) => 0.93 + hash1(seed + 3) * 0.14;
 
 /**
  * 俯视半宽剖面：圆钝的楔形头 → 在身长 42% 处（胸鳍与背鳍之间）最宽 → 收窄成尾柄。
- * x 超出体轴范围或越过尾根时返回 0（尾鳍区域由此接管）。
+ * 金鱼（fancy）：身形更圆更宽，最宽点更靠前。x 超出体轴范围时返回 0（尾鳍区域由此接管）。
  */
-export function bodyHalfWidth(x: number, girth: number): number {
+export function bodyHalfWidth(x: number, girth: number, kind: string = 'koi'): number {
   const nose = KOI_BODY.nose, tailRoot = -30;
   const t = (nose - x) / (nose - tailRoot);
   if (t < 0 || t > 1) return 0;
-  const peak = 0.42;
-  const W = 9.6 * girth;
+  const fancy = kind === 'goldfish';
+  const peak = fancy ? 0.5 : 0.42;
+  const W = (fancy ? 11.2 : 9.6) * girth;
   const cap = t > 0.93 ? Math.sqrt(Math.max(0, 1 - ((t - 0.93) / 0.07) ** 2)) : 1;
   if (t < peak) {
     const s = t / peak;
     return W * Math.pow(1 - (1 - s) * (1 - s), 0.55) * cap;
   }
-  return W * (1 - 0.6 * Math.pow((t - peak) / (1 - peak), 1.5)) * cap;
+  return W * (1 - (fancy ? 0.52 : 0.6) * Math.pow((t - peak) / (1 - peak), fancy ? 1.3 : 1.5)) * cap;
 }

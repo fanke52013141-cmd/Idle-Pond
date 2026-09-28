@@ -63,8 +63,8 @@ function blurCanvas(src: HTMLCanvasElement, px: number): HTMLCanvasElement {
 
 // ---------------- 斑纹场 ----------------
 
-/** 色斑/墨斑的距离场：正值在斑内。不同品种不同构法 */
-function makePatchField(kind: KoiKind, seed: number) {
+/** 色斑/墨斑的距离场：正值在斑内。不同品种不同构法；金鱼走锦鲤斑系（有 second 色则带墨斑） */
+function makePatchField(kind: KoiKind, seed: number, hasSecond = false) {
   const rng = makeRng(seed * 7919 + 11);
   const n1 = makeValueNoise(seed + 1);
   const n2 = makeValueNoise(seed + 2);
@@ -74,7 +74,7 @@ function makePatchField(kind: KoiKind, seed: number) {
   const band = rng() * TAU;
   const capX = 20 + rng() * 6, capR = 5 + rng() * 1.5;
   const hi = (x: number, y: number): number => {
-    if (kind === 'kohaku' || kind === 'sanke') {
+    if (kind === 'kohaku' || kind === 'sanke' || kind === 'goldfish') {
       let v = fbm(n1, x * 0.07 + ox, y * 1.05 + oy) + 0.14 * Math.sin(x * 0.16 + band) - 0.5;
       if (headRed) v += 0.2 * smoothstep(17, 25, x);
       return v - th + 0.5 - 0.6 * smoothstep(30.5, 33.5, x) - 0.08 * smoothstep(0.7, 1, Math.min(1, Math.abs(y)));
@@ -85,7 +85,7 @@ function makePatchField(kind: KoiKind, seed: number) {
     return -1;
   };
   const sumi = (x: number, y: number): number => {
-    if (kind === 'sanke') return fbm(n2, x * 0.2 + ox, y * 1.8 + oy, 3) - 0.72 - 0.3 * smoothstep(13, 19, x);
+    if (kind === 'sanke' || (kind === 'goldfish' && hasSecond)) return fbm(n2, x * 0.2 + ox, y * 1.8 + oy, 3) - 0.72 - 0.3 * smoothstep(13, 19, x);
     if (kind === 'utsuri') {
       const v = fbm(n1, x * 0.06 + ox, y * 0.9 + oy) + 0.12 * Math.sin(x * 0.13 + band) - 0.5;
       return v - th + 0.5 - 0.04;
@@ -136,12 +136,12 @@ function paintBody(pal: KoiPalette, seed: number, girth: number, ppu: number): H
   const W = Math.round(SPRITE_WIDTH * ppu), H = Math.round(KOI_BODY.spriteHalf * 2 * ppu);
   const N = W * H;
   const kind = pal.kind;
-  const pat = makePatchField(kind, seed);
+  const pat = makePatchField(kind, seed, !!pal.second);
   const grain = makeValueNoise(seed + 7);
   const base = hexRgb(pal.base), spotC = hexRgb(pal.spot), sumiC = hexRgb(pal.second ?? pal.spot), finC = hexRgb(pal.fin);
   const hiDeep = [spotC[0] * 0.86, spotC[1] * 0.86, spotC[2] * 0.86];
   const hiEdge = [lerp(spotC[0], 238, 0.35), lerp(spotC[1], 128, 0.35), lerp(spotC[2], 74, 0.35)];
-  const patterned = kind === 'kohaku' || kind === 'sanke' || kind === 'utsuri' || kind === 'tancho';
+  const patterned = kind === 'kohaku' || kind === 'sanke' || kind === 'utsuri' || kind === 'tancho' || kind === 'goldfish';
   const pedHi = pat.hi(-26, 0) > 0;
   const pedSumi = pat.sumi(-26, 0) > 0;
 
@@ -158,7 +158,7 @@ function paintBody(pal: KoiPalette, seed: number, girth: number, ppu: number): H
     for (let px = 0; px < W; px++) {
       const x = (px + 0.5) / ppu + KOI_BODY.spriteLeft;
       const i = py * W + px;
-      const w = bodyHalfWidth(x, girth);
+      const w = bodyHalfWidth(x, girth, kind);
 
       // ---- 身体 ----
       if (w > 0) {
@@ -252,20 +252,23 @@ function paintBody(pal: KoiPalette, seed: number, girth: number, ppu: number): H
         }
       }
 
-      // ---- 尾鳍（叉形、半透明、细鳍条） ----
-      if (x < -23 && x > -57.5) {
-        const tailU = clamp01((-26 - x) / 26);
-        const span = 3.2 + 9.4 * Math.pow(tailU, 0.85);
+      // ---- 尾鳍（锦鲤叉形；金鱼更长更飘更透） ----
+      const fancy = kind === 'goldfish';
+      const tailRootX = fancy ? -19 : -23;
+      if (x < tailRootX && x > -57.5) {
+        const tailU = clamp01((tailRootX - 3 - x) / 26);
+        const span = (fancy ? 4.6 : 3.2) + (fancy ? 12.5 : 9.4) * Math.pow(tailU, 0.85);
         const wob = (grain(x * 0.5, y * 0.5) - 0.5) * 1.2;
-        const endX = -47 - 9 * Math.pow(Math.min(1, ay / 11.5), 1.6) + wob;
-        const edge = Math.min(span - ay, x - endX, -23 - x);
+        const endX = (fancy ? -44 : -47) - (fancy ? 11 : 9) * Math.pow(Math.min(1, ay / 11.5), 1.6) + wob;
+        const edge = Math.min(span - ay, x - endX, tailRootX - x);
         if (edge > -0.6) {
-          const th = Math.atan2(y, -(x + 22));
-          const ray = Math.pow(0.5 + 0.5 * Math.cos(th * 26), 6);
+          const th = Math.atan2(y, -(x - tailRootX + 1));
+          const ray = Math.pow(0.5 + 0.5 * Math.cos(th * (fancy ? 20 : 26)), 6);
           const fold = 0.5 + 0.5 * Math.sin(th * 9 + grain(x * 0.2, 3) * 4);
-          const a = clamp01((edge + 0.6) / 1.4) * (lerp(0.8, 0.34, clamp01((-27 - x) / 26)) + ray * 0.16 - fold * 0.1);
+          const alphaBase = lerp(0.8, fancy ? 0.22 : 0.34, clamp01((-27 - x) / 26));
+          const a = clamp01((edge + 0.6) / 1.4) * (alphaBase + ray * 0.16 - fold * 0.1);
           let f0 = finC[0], f1 = finC[1], f2 = finC[2];
-          const rootMix = clamp01(1 - (-26 - x) / 7);
+          const rootMix = clamp01(1 - (tailRootX - 3 - x) / 7);
           if (pedHi) {
             f0 = lerp(f0, lerp(base[0], spotC[0], rootMix * 0.8), rootMix);
             f1 = lerp(f1, lerp(base[1], spotC[1], rootMix * 0.8), rootMix);
@@ -318,7 +321,7 @@ function paintBody(pal: KoiPalette, seed: number, girth: number, ppu: number): H
   ctx.lineCap = 'round';
   const ink = kind === 'sumi' ? 'rgba(200,210,205,' : 'rgba(40,52,46,';
   for (const s of [-1, 1]) {
-    const w1 = bodyHalfWidth(18.6, girth), w2 = bodyHalfWidth(16.2, girth);
+    const w1 = bodyHalfWidth(18.6, girth, kind), w2 = bodyHalfWidth(16.2, girth, kind);
     ctx.beginPath();
     ctx.moveTo(18.8, s * w1 * 0.42);
     ctx.quadraticCurveTo(18.2, s * w1 * 0.85, 16.2, s * w2 * 0.99);
@@ -338,7 +341,7 @@ function paintBody(pal: KoiPalette, seed: number, girth: number, ppu: number): H
     ctx.strokeStyle = kind === 'sumi' ? 'rgba(60,70,66,0.55)' : 'rgba(214,196,168,0.55)';
     ctx.lineWidth = 0.38;
     ctx.stroke();
-    const ex = 25.8, ey = s * (bodyHalfWidth(ex, girth) - 1.25);
+    const ex = 25.8, ey = s * (bodyHalfWidth(ex, girth, kind) - 1.25);
     const ring = ctx.createRadialGradient(ex, ey, 0.15, ex, ey, 1.45);
     ring.addColorStop(0, '#0f1413');
     ring.addColorStop(0.5, '#1a201e');

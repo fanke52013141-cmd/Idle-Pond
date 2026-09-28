@@ -9,6 +9,8 @@ class PlantSpriteStore {
   snails: HTMLImageElement[] = [];
   strider: HTMLImageElement | null = null;
   pellet: HTMLImageElement | null = null;
+  droplet: HTMLImageElement | null = null;
+  turtles: HTMLImageElement[] = [];
   private started = false;
 
   ensure(): void {
@@ -31,6 +33,13 @@ class PlantSpriteStore {
     for (const v of ['a', 'b']) load(`./assets/snail-${v}.png`, (img) => this.snails.push(img));
     load('./assets/strider.png', (img) => (this.strider = img));
     load('./assets/pellet.png', (img) => (this.pellet = img));
+    load('./assets/droplet.png', (img) => (this.droplet = img));
+    for (const v of ['a', 'b']) load(`./assets/turtle-${v}.png`, (img) => this.turtles.push(img));
+  }
+
+  turtle(variant: number): HTMLImageElement | null {
+    if (!this.turtles.length) return null;
+    return this.turtles[((variant % this.turtles.length) + this.turtles.length) % this.turtles.length];
   }
 
   pad(variant: number): HTMLImageElement | null {

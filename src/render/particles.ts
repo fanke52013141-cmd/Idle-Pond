@@ -1,4 +1,5 @@
 import type { Pad, Plants } from '../core/plants';
+import { plantSprites } from '../art/plantSprites';
 
 interface Droplet {
   x: number; y: number; vx: number; vy: number; z: number; vz: number;
@@ -84,30 +85,41 @@ export class Particles {
 
   drawSurface(ctx: CanvasRenderingContext2D, look: { elementBright: number }): void {
     void look;
+    const dropSprite = plantSprites.droplet;
     for (const c of this.crowns) {
       const t = c.age / c.life;
       const r = c.s * (0.3 + 0.8 * Math.sqrt(t));
-      const a = Math.pow(1 - t, 1.5) * 0.55;
-      ctx.strokeStyle = `rgba(240,250,244,${a.toFixed(3)})`;
-      ctx.lineWidth = 1.6;
-      ctx.beginPath();
-      ctx.ellipse(c.x, c.y, r, r * 0.82, 0, 0, Math.PI * 2);
-      ctx.stroke();
-      // 溅起的短水柱
+      const a = Math.pow(1 - t, 1.5) * 0.5;
+      // 多层柔边水花冠：三圈不同半径/粗细/透明度，替代单圈简笔
+      for (const [rf, lwf, am] of [[0.62, 2.4, a], [1.0, 1.3, a * 0.72], [1.34, 0.7, a * 0.45]] as const) {
+        ctx.strokeStyle = `rgba(240,250,244,${(am * (1 - rf * 0.3)).toFixed(3)})`;
+        ctx.lineWidth = lwf;
+        ctx.beginPath();
+        ctx.ellipse(c.x, c.y, r * rf, r * rf * 0.84, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      // 中央隆起水柱
       const up = Math.sin(Math.min(1, t * 1.6) * Math.PI) * c.s * 0.55;
       if (up > 1) {
-        ctx.fillStyle = `rgba(240,250,244,${(a * 0.9).toFixed(3)})`;
+        ctx.fillStyle = `rgba(240,250,244,${(a * 0.85).toFixed(3)})`;
         ctx.beginPath();
-        ctx.ellipse(c.x, c.y, c.s * 0.22, up, 0, 0, Math.PI * 2);
+        ctx.ellipse(c.x, c.y, c.s * 0.2, up, 0, 0, Math.PI * 2);
         ctx.fill();
       }
     }
     for (const d of this.droplets) {
       const a = Math.min(1, d.life - d.age);
-      ctx.fillStyle = `rgba(238,250,246,${(0.8 * a).toFixed(3)})`;
-      ctx.beginPath();
-      ctx.arc(d.x, d.y - d.z * 0.4, d.r, 0, Math.PI * 2);
-      ctx.fill();
+      const r = d.r * 2.2;
+      ctx.globalAlpha = 0.9 * a;
+      if (dropSprite) {
+        ctx.drawImage(dropSprite, d.x - r, d.y - d.z * 0.4 - r, r * 2, r * 2);
+      } else {
+        ctx.fillStyle = `rgba(238,250,246,${(0.8 * a).toFixed(3)})`;
+        ctx.beginPath();
+        ctx.arc(d.x, d.y - d.z * 0.4, d.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
     }
   }
 
