@@ -52,10 +52,10 @@ export function drawMinnow(ctx: CanvasRenderingContext2D, x: number, y: number, 
 export function drawSnail(ctx: CanvasRenderingContext2D, x: number, y: number, angle: number, s: number, variant: number): void {
   const ai = plantSprites.snail(variant);
   if (ai) {
-    const L = s * 2.4;
+    const L = s * 3;
     ctx.save();
     ctx.translate(x, y);
-    ctx.rotate(angle + Math.PI / 2); // 精灵头朝上 → 转到运动方向
+    ctx.rotate(angle); // 精灵头朝右（已审计）
     ctx.drawImage(ai, -L / 2, -L / 2, L, L);
     ctx.restore();
     return;
@@ -95,10 +95,10 @@ export function drawSnail(ctx: CanvasRenderingContext2D, x: number, y: number, a
 export function drawShrimp(ctx: CanvasRenderingContext2D, x: number, y: number, angle: number, s: number): void {
   const ai = plantSprites.shrimp;
   if (ai) {
-    const L = s * 2.6;
+    const L = s * 3.2;
     ctx.save();
     ctx.translate(x, y);
-    ctx.rotate(angle);
+    ctx.rotate(angle + Math.PI); // 精灵头朝左（已审计），需翻转 180°
     ctx.globalAlpha = 0.9;
     ctx.drawImage(ai, -L / 2, -L / 2, L, L);
     ctx.globalAlpha = 1;

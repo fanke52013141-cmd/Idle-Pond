@@ -7,16 +7,18 @@ import { TAU, clamp, wrapAngle } from './utils';
 const NAMES = ['青瓷', '月白', '沉璧', '荷风', '听雨', '藕花', '掬月', '渡月', '涟漪', '素波', '映荷', '枕水', '拾星', '浮玉', '疏影', '半亩'];
 
 export function makeFish(index: number, rng: () => number = Math.random): FishData {
+  const size = 0.5 + rng() * 0.8; // 0.5~1.3：大小差距 2.6 倍，一眼可辨
   return {
     id: `koi-${Date.now().toString(36)}-${index}`,
     name: NAMES[index % NAMES.length],
     palette: index % 7,
     seed: Math.floor(rng() * 1e5),
-    size: 0.52 + rng() * 0.34,
+    size,
     x: 0.18 + rng() * 0.64,
     y: 0.2 + rng() * 0.6,
     angle: rng() * TAU,
-    speedMul: 0.85 + rng() * 0.3,
+    // 大鱼慢而稳重，小鱼灵活
+    speedMul: (0.8 + rng() * 0.4) * (1.18 - (size - 0.5) * 0.5),
     meals: 0,
     bornAt: Date.now(),
   };
@@ -38,12 +40,14 @@ export function wake(f: Fish): void {
   f.rest = 0;
   f.flee = 0;
   f.fleeAngle = 0;
-  f.cruise = (0.3 + hash1(f.seed + 2) * 0.22) * clamp(f.speedMul, 0.5, 1.5);
-  f.react = 0.15 + hash1(f.seed + 3) * 0.9;
-  f.appetite = 0.55 + hash1(f.seed + 4) * 0.45;
+  f.cruise = (0.2 + hash1(f.seed + 2) * 0.42) * clamp(f.speedMul, 0.4, 1.6);
+  f.react = 0.1 + hash1(f.seed + 3) * 1.5;
+  f.appetite = 0.4 + hash1(f.seed + 4) * 0.7;
   f.spine = null;
   f.spineScale = 0;
   f.jump = null;
+  f.dashT = 0;
+  f.dashCd = 4 + hash1(f.seed + 5) * 9;
 }
 
 /**
@@ -201,7 +205,7 @@ export class Pond {
           want = 0.7 * L;
         }
       } else {
-        // 游荡：随机目标 + 航向正弦扰动 + 偶发小憩
+        // 游荡：随机目标 + 航向正弦扰动 + 偶发小憩 + 偶发冲刺（灵气：安静的池子突然窜一下）
         f.goalTime -= dt;
         if (!f.goal || f.goalTime <= 0 || Math.hypot(f.goal.x * w - x, f.goal.y * h - y) < L * 1.3) this.pickGoal(f);
         const goal = f.goal!;
@@ -211,6 +215,16 @@ export class Pond {
         f.rest = Math.max(0, f.rest - dt);
         if (f.rest <= 0 && this.rng() < dt * 0.02) f.rest = 2 + this.rng() * 4;
         want = f.cruise * L * (f.rest > 0 ? 0.12 : 1);
+        f.dashCd -= dt;
+        if (f.dashCd <= 0 && f.rest <= 0) {
+          f.dashT = 0.7;
+          f.dashCd = 7 + this.rng() * 11;
+          f.turn += (this.rng() - 0.5) * 2.4; // 起步带一个小急转
+        }
+        if (f.dashT > 0) {
+          f.dashT -= dt;
+          want = Math.max(want, 2.3 * L);
+        }
         if (this.rng() < dt * 0.015) f.depthGoal = 0.15 + this.rng() * 0.75;
       }
     }

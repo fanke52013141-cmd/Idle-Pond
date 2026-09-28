@@ -56,6 +56,8 @@ export interface Fish extends FishData {
   spine: Float32Array | null;
   spineScale: number;
   jump: { t: number; dur: number; dirX: number; dirY: number; power: number } | null;
+  dashT: number;
+  dashCd: number;
 }
 
 export interface FoodPellet {

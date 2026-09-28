@@ -7,7 +7,7 @@ export interface SaveData {
   v: 1;
   fish: FishDataLike[];
   pads: Omit<Pad, 'ox' | 'oy' | 'vx' | 'vy'>[];
-  lotus: { nx: number; ny: number; variant: number; age: number; phase: 'bud' | 'bloom' | 'seedpod'; seed: number }[];
+  lotus: { nx: number; ny: number; variant: number; age: number; phase: 'bud' | 'bloom' | 'seedpod'; seed: number; swayA: number; swayV: number }[];
   settings: { quality: 'high' | 'eco'; water: 'sim' | 'lite' | 'off' };
 }
 
@@ -47,7 +47,7 @@ export function applyPlantsSave(plants: Plants, data: SaveData | null): boolean 
     plants.pads = data.pads.map((p) => ({ ...p, ox: 0, oy: 0, vx: 0, vy: 0 }));
   }
   if (data.lotus.length) {
-    plants.lotus = data.lotus.map((l) => ({ ...l }));
+    plants.lotus = data.lotus.map((l) => ({ ...l, swayA: 0, swayV: 0 }));
   }
   return true;
 }

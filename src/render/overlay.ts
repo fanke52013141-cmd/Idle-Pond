@@ -53,14 +53,30 @@ export function renderOverlay(
     ctx.restore();
   }
   for (const l of plants.lotus) {
-    const [px, py] = plants.screenPos(l, w, h);
-    const openness = plants.lotusOpenness(l, look);
-    const bob = Math.sin(plants.time * (0.9 + plants.windK) + l.seed) * 1.6;
+    // 茎：从水底锚点到花头的弯曲短茎（弹簧摆动），花头挂在茎端
+    const baseX = l.nx * w + Math.sin(plants.time * 0.11 + l.nx * 40) * 3;
+    const baseY = l.ny * h + Math.cos(plants.time * 0.13 + l.ny * 50) * 3;
+    const sway = l.swayA;
+    const len = 24 * padScale;
+    const headX = baseX + Math.sin(sway) * len;
+    const headY = baseY - len * 0.22 + Math.cos(plants.time * (0.9 + plants.windK) + l.seed) * 1.2;
     ctx.save();
-    ctx.translate(px + Math.sin(plants.time * 0.5 + l.seed) * 1.5, py + bob);
-    // 风越大，花头摇得越明显
-    ctx.rotate(Math.sin(plants.time * (0.33 + plants.windK * 0.2) + l.seed * 2.3) * (0.03 + 0.09 * plants.windK));
     if (brightQ < 0.99) ctx.filter = `brightness(${brightQ.toFixed(3)})`;
+    // 茎身（深绿→浅绿，随摆动弯曲）
+    ctx.strokeStyle = 'rgba(74,112,58,0.9)';
+    ctx.lineCap = 'round';
+    ctx.lineWidth = 3.2 * padScale;
+    ctx.beginPath();
+    ctx.moveTo(baseX, baseY);
+    ctx.quadraticCurveTo(baseX + Math.sin(sway) * len * 0.35, baseY - len * 0.08, headX, headY + 6 * padScale);
+    ctx.stroke();
+    ctx.lineWidth = 1.6 * padScale;
+    ctx.strokeStyle = 'rgba(126,160,92,0.85)';
+    ctx.stroke();
+    // 花头挂在茎端，随摆微转
+    ctx.translate(headX, headY);
+    ctx.rotate(sway * 0.6);
+    const openness = plants.lotusOpenness(l, look);
     drawLotusState(ctx, l, openness, padScale);
     ctx.filter = 'none';
     ctx.restore();

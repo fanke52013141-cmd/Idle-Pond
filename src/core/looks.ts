@@ -21,7 +21,7 @@ export function computeLook(sun: SunState, weather: 'sunny' | 'rain' = 'sunny', 
   const night = sun.nightK;
   const golden = clamp01(1 - el * 2.2); // 黄金时刻系数
 
-  const bright = lerp(1.04, 0.34, night) * lerp(1, 0.82, golden * 0.4);
+  const bright = lerp(0.9, 0.3, night) * lerp(1, 0.85, golden * 0.4);
   const tint: [number, number, number] = [
     lerp(1.02, 0.72, night) + golden * 0.05,
     lerp(1, 0.8, night),
@@ -33,7 +33,7 @@ export function computeLook(sun: SunState, weather: 'sunny' | 'rain' = 'sunny', 
     lerp(0.98, 0.85, night),
     lerp(0.9, 1.05, night),
   ];
-  const specK = el * 1.35 * (1 - night) + 0.3;
+  const specK = el * 0.8 * (1 - night) + 0.22;
   const waveAmp = 0.16 + 0.22 * windK + 0.05 * night + (weather === "rain" ? 0.12 : 0);
 
   return {

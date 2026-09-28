@@ -1,7 +1,7 @@
 import type { Look } from './looks';
 import { makeRng } from './rng';
 import type { Wind } from './wind';
-import { clamp01, lerp, TAU } from './utils';
+import { clamp, clamp01, lerp, TAU } from './utils';
 
 export interface Pad {
   nx: number; ny: number;      // 归一化锚点（漂移在此附近）
@@ -21,6 +21,8 @@ export interface Lotus {
   age: number;                 // 0 苞 → 1 盛 → >1 凋
   phase: 'bud' | 'bloom' | 'seedpod';
   seed: number;
+  swayA: number;               // 茎的弯曲角（弹簧状态）
+  swayV: number;               // 角速度
 }
 
 /** 漂移与摆动只依赖时间与风；生长依赖真实时间 */
@@ -67,6 +69,8 @@ export class Plants {
         age: 0.5 + rng() * 0.6,
         phase: 'bloom',
         seed: Math.floor(rng() * 1e5),
+        swayA: 0,
+        swayV: 0,
       });
     }
   }
@@ -98,11 +102,16 @@ export class Plants {
     for (const l of this.lotus) {
       l.age += dt * 0.0000045;
       if (l.phase === 'bloom' && l.age > 2.2) l.phase = 'seedpod';
+      // 茎的弹簧动力学：风推（含阵风）+ 回正弹簧 + 阻尼——花头"像杆子撑着"地摇
+      const drive = wx * wind.k * 2.2 + Math.sin(this.time * 1.3 + l.seed) * wind.k * 0.5;
+      l.swayV += (-l.swayA * 3.2 + drive) * dt;
+      l.swayV *= Math.exp(-dt * 1.4);
+      l.swayA = clamp(l.swayA + l.swayV * dt, -0.55, 0.55);
     }
     void look;
   }
 
-  /** 水花冲击：范围内的荷叶被推开一点（鱼跃/投食落点旁的叶会晃） */
+  /** 水花冲击：范围内的荷叶被推开、荷花茎被打颤（鱼跃/投食落点旁） */
   splashImpulse(x: number, y: number, radius: number, power: number): void {
     for (const p of this.pads) {
       const dx = p.nx * this.lw - x, dy = p.ny * this.lh - y;
@@ -111,6 +120,14 @@ export class Plants {
         const k = (1 - d / (radius + p.r)) * power * 46;
         p.vx += (dx / (d || 1)) * k;
         p.vy += (dy / (d || 1)) * k;
+      }
+    }
+    for (const l of this.lotus) {
+      const dx = l.nx * this.lw - x, dy = l.ny * this.lh - y;
+      const d = Math.hypot(dx, dy);
+      if (d < radius + 90) {
+        // 冲击方向决定茎弯向，强度随距离衰减
+        l.swayV += ((dx / (d || 1)) * power * 2.6) * (1 - d / (radius + 90));
       }
     }
   }

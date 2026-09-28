@@ -56,10 +56,15 @@ export class WaterPass {
         float focus = clamp(-divN * 5.0, 0.0, 0.9);
         float base = texture(uNoise, cuv * 3.2 + uTime * vec2(0.02, 0.013)).b;
         float fine = texture(uNoise, cuv * 11.0 - uTime * vec2(0.014, 0.021)).g;
-        float web = base * 0.62 + fine * 0.38;
-        float baseCaust = pow(clamp(web * 1.6 - 0.68, 0.0, 1.0), 2.0) * 0.4;
+        float web = base * 0.72 + fine * 0.28;
+        float baseCaust = pow(clamp(web * 1.6 - 0.68, 0.0, 1.0), 2.0) * 0.26;
         float caust = max(focus, baseCaust) * uCausticK;
         scene += caust * uCausticTint;
+
+        // 水色分级（W4）：中心水深一档、边缘浅——水体的厚度感
+        float cen = 1.0 - smoothstep(0.0, 0.75, distance(uv, vec2(0.5)));
+        scene *= mix(1.0, 0.9, cen * 0.75);
+        scene = mix(scene, scene * vec3(0.94, 1.02, 1.0), cen * 0.6);
 
         // 波光：朝向太阳的镜面 + 碎金星点（高频噪声阈值化，随波面朝向出现/消失）
         vec3 N = normalize(vec3(grad, 1.0));
@@ -67,8 +72,8 @@ export class WaterPass {
         float facing = max(dot(N, L), 0.0);
         float g1 = texture(uNoise, cuv * 9.0 + uTime * vec2(0.05, 0.03)).g;
         float g2 = texture(uNoise, cuv * 15.0 - uTime * vec2(0.04, 0.06)).r;
-        float sparkle = pow(clamp(g1 * g2 * 3.1 - 1.35, 0.0, 1.0), 2.0);
-        float spec = (pow(facing, 130.0) * 0.75 + sparkle * 0.9 * pow(facing, 3.0)) * uSpecK;
+        float sparkle = pow(clamp(g1 * g2 * 3.35 - 1.5, 0.0, 1.0), 2.0);
+        float spec = (pow(facing, 130.0) * 0.75 + sparkle * 0.75 * pow(facing, 3.0)) * uSpecK;
         vec3 c = scene + spec * uSunColor;
 
         // 月影：柔和光晕 + 亮盘
